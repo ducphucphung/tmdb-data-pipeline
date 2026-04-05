@@ -1,0 +1,17 @@
+.env
+
+keys/
+data/
+infra/variables.tf
+
+# Terraform
+infra/.terraform/
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+
+# Airflow
+airflow/*
+!airflow/dags/
+!airflow/dags/**
