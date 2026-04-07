@@ -48,3 +48,39 @@ models:
       - name: person_id
         tests:
           - not_null
+  - name: dim_company
+    columns:
+      - name: company_id
+        tests:
+          - not_null
+          - unique
+
+  - name: dim_keyword
+    columns:
+      - name: keyword_id
+        tests:
+          - not_null
+          - unique
+
+  - name: dim_country
+    columns:
+      - name: country_code
+        tests:
+          - not_null
+          - unique
+
+  - name: dim_language
+    columns:
+      - name: language_code
+        tests:
+          - not_null
+          - unique
+
+  - name: bridge_movie_crew
+    columns:
+      - name: movie_id
+        tests:
+          - not_null
+      - name: person_id
+        tests:
+          - not_null

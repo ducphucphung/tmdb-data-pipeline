@@ -1,3 +1,9 @@
+{{ config(
+    materialized='incremental',
+    unique_key=['movie_id', 'snapshot_date'],
+    incremental_strategy='merge'
+) }}
+
 select
     movie_id,
     snapshot_date,
@@ -8,3 +14,10 @@ select
     runtime,
     status
 from {{ ref('stg_fact_movie_daily_snapshot') }}
+
+{% if is_incremental() %}
+where snapshot_date > (
+    select coalesce(max(snapshot_date), date('1900-01-01'))
+    from {{ this }}
+)
+{% endif %}
