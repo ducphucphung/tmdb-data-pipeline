@@ -1,0 +1,17 @@
+version: 2
+
+sources:
+  - name: tmdb_silver
+    database: tmdb-491611
+    schema: tmdb_dataset
+    tables:
+      - name: movies
+      - name: fact_movie_daily_snapshot
+      - name: movie_genres
+      - name: movie_cast
+      - name: movie_crew
+      - name: movie_keywords
+      - name: movie_production_companies
+      - name: dim_genre
+      - name: dim_person
+      - name: dim_company

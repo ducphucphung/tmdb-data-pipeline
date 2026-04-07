@@ -1,0 +1,50 @@
+version: 2
+
+models:
+  - name: dim_movie
+    columns:
+      - name: movie_id
+        tests:
+          - not_null
+          - unique
+
+  - name: dim_genre
+    columns:
+      - name: genre_id
+        tests:
+          - not_null
+          - unique
+
+  - name: dim_person
+    columns:
+      - name: person_id
+        tests:
+          - not_null
+          - unique
+
+  - name: fct_movie_daily_snapshot
+    columns:
+      - name: movie_id
+        tests:
+          - not_null
+      - name: snapshot_date
+        tests:
+          - not_null
+
+  - name: bridge_movie_genre
+    columns:
+      - name: movie_id
+        tests:
+          - not_null
+      - name: genre_id
+        tests:
+          - not_null
+
+  - name: bridge_movie_cast
+    columns:
+      - name: movie_id
+        tests:
+          - not_null
+      - name: person_id
+        tests:
+          - not_null

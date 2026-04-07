@@ -1,0 +1,23 @@
+version: 2
+
+models:
+  - name: stg_movies
+    columns:
+      - name: movie_id
+        tests: [not_null]
+      - name: snapshot_date
+        tests: [not_null]
+
+  - name: stg_fact_movie_daily_snapshot
+    columns:
+      - name: movie_id
+        tests: [not_null]
+      - name: snapshot_date
+        tests: [not_null]
+
+  - name: stg_movie_genres
+    columns:
+      - name: movie_id
+        tests: [not_null]
+      - name: genre_id
+        tests: [not_null]
