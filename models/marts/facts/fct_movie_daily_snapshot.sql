@@ -17,7 +17,7 @@ from {{ ref('stg_fact_movie_daily_snapshot') }}
 
 {% if is_incremental() %}
 where snapshot_date > (
-    select coalesce(max(snapshot_date), date('1900-01-01'))
+    select coalesce(max(snapshot_date), date('2026-01-01'))
     from {{ this }}
 )
 {% endif %}
