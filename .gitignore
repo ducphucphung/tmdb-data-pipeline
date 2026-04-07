@@ -15,5 +15,3 @@ infra/.terraform/
 airflow/*
 !airflow/dags/
 !airflow/dags/**
-
-.gitignore
