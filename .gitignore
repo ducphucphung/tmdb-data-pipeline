@@ -1,8 +1,11 @@
 .env
+.codex
 
 keys/
 data/
 infra/variables.tf
+__pycache__/
+*.pyc
 
 # Terraform
 infra/.terraform/

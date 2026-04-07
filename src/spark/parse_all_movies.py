@@ -1,5 +1,6 @@
 from pyspark.sql import SparkSession, functions as F, types as T
 import os
+from datetime import date
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -17,6 +18,7 @@ spark._jsc.hadoopConfiguration().set(
 )
 
 bucket_name = os.getenv("GCS_BUCKET_NAME")
+snapshot_date = os.getenv("SNAPSHOT_DATE", date.today().isoformat())
 
 RAW_ROOT = f"gs://{bucket_name}/raw/movie_details"
 PARSED_ROOT = f"gs://{bucket_name}/silver_parsed/movie_details"
@@ -165,7 +167,7 @@ raw_files = (
     spark.read
     .format("text")
     .option("wholetext", "true")
-    .load(f"{RAW_ROOT}/snapshot_date=*/movie_id=*.json")
+    .load(f"{RAW_ROOT}/snapshot_date={snapshot_date}/movie_id=*.json")
     .withColumnRenamed("value", "raw_json")
     .withColumn("source_file", F.input_file_name())
     .withColumn(
@@ -203,7 +205,7 @@ parsed_good = parsed_good.repartition("snapshot_date")
 
 (
     parsed_good.write
-    .mode("overwrite")
+    .mode("append")
     .partitionBy("snapshot_date")
     .parquet(PARSED_ROOT)
 )

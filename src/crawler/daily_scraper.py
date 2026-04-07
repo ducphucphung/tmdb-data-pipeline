@@ -66,14 +66,13 @@ def daterange_for_daily_discovery(lookback_days: int) -> tuple[str, str]:
 def discover_new_movie_ids(
     client: TMDBClient,
     release_date_gte: str,
-    release_date_lte: str,
     snapshot_date: str,
 ) -> Set[int]:
     discovered_ids: Set[int] = set()
 
     first_page = client.discover_movies(
         release_date_gte=release_date_gte,
-        release_date_lte=release_date_lte,
+        release_date_lte=release_date_gte,
         page=1,
     )
 
@@ -83,7 +82,6 @@ def discover_new_movie_ids(
         RAW_ROOT
         / "discover_movies"
         / f"snapshot_date={snapshot_date}"
-        / f"window={release_date_gte}_{release_date_lte}"
         / "page=1.json"
     )
     write_json(first_page_path, first_page)
@@ -95,7 +93,7 @@ def discover_new_movie_ids(
     for page in range(2, total_pages + 1):
         payload = client.discover_movies(
             release_date_gte=release_date_gte,
-            release_date_lte=release_date_lte,
+            release_date_lte=release_date_gte,
             page=page,
         )
 
@@ -103,7 +101,6 @@ def discover_new_movie_ids(
             RAW_ROOT
             / "discover_movies"
             / f"snapshot_date={snapshot_date}"
-            / f"window={release_date_gte}_{release_date_lte}"
             / f"page={page}.json"
         )
         write_json(page_path, payload)
@@ -135,7 +132,7 @@ def main() -> None:
     ensure_dirs()
 
     client = TMDBClient(TMDB_READ_TOKEN)
-    snapshot_date = date.today().isoformat()
+    snapshot_date = os.getenv("SNAPSHOT_DATE", date.today().isoformat())
 
     print(f"Running daily TMDB incremental crawler for snapshot_date={snapshot_date}")
 
@@ -143,14 +140,9 @@ def main() -> None:
     tracked_movie_ids = load_tracked_movie_ids()
     print(f"Loaded {len(tracked_movie_ids)} existing movie IDs")
 
-    # 1) Discover new movies from a recent release-date window
-    release_date_gte, release_date_lte = daterange_for_daily_discovery(DISCOVERY_LOOKBACK_DAYS)
-    print(f"Discovering new movies between {release_date_gte} and {release_date_lte}")
-
     new_movie_ids = discover_new_movie_ids(
         client=client,
-        release_date_gte=release_date_gte,
-        release_date_lte=release_date_lte,
+        release_date_gte=snapshot_date,
         snapshot_date=snapshot_date,
     )
 

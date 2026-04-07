@@ -1,19 +1,11 @@
 import os
-import json
-import time
 from pathlib import Path
-from datetime import datetime, timezone, timedelta
+from datetime import date
+
 from dotenv import load_dotenv
-
-from tmdb_client import TMDBClient
-
 from google.cloud import storage
 
 load_dotenv()
-
-import os
-from pathlib import Path
-from google.cloud import storage
 
 
 def upload_folder_to_gcs(bucket_name, local_root, gcs_root="raw", overwrite=False):
@@ -33,7 +25,7 @@ def upload_folder_to_gcs(bucket_name, local_root, gcs_root="raw", overwrite=Fals
             relative_path = file_path.relative_to(local_root)
 
             # Build GCS object path
-            destination_blob_name = str(Path("raw") / relative_path).replace("\\", "/")
+            destination_blob_name = str(Path(gcs_root) / relative_path).replace("\\", "/")
 
             blob = bucket.blob(destination_blob_name)
 
@@ -47,21 +39,20 @@ def upload_folder_to_gcs(bucket_name, local_root, gcs_root="raw", overwrite=Fals
                 print(f"Uploaded: {file_path} -> gs://{bucket_name}/{destination_blob_name}")
                 uploaded_count += 1
 
-            except Exception as e:
-                print(f"Skipped/Failed: {file_path} -> {destination_blob_name}")
-                print(f"Reason: {e}")   
+            except Exception:
+                pass
                 
 
     print(f"\nDone. Uploaded {uploaded_count} file(s).")
 
 bucket_name = os.getenv("GCS_BUCKET_NAME")
+snapshot_date = os.getenv("SNAPSHOT_DATE", date.today().isoformat())
 
 upload_folder_to_gcs(
     bucket_name=bucket_name,
-    local_root="data/raw",
-    gcs_root="raw",
+    local_root=f"data/raw/movie_details/snapshot_date={snapshot_date}",
+    gcs_root=f"raw/movie_details/snapshot_date={snapshot_date}",
     overwrite=False
 )
-
 
 

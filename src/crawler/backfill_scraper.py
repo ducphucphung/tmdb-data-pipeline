@@ -113,8 +113,8 @@ def main():
     snapshot_date = date.today().isoformat()
 
     # 2) discover movies (pick your range)
-    date_from = "2026-04-01"
-    date_to   = "2026-04-04"
+    date_from = "2026-04-05"
+    date_to   = "2026-04-07"
 
     tracked_movie_ids = load_tracked_movie_ids()
     new_movie_ids = discover_new_movie_ids(

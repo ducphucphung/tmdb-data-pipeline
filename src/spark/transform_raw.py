@@ -1,5 +1,6 @@
 from pyspark.sql import SparkSession, functions as F, types as T
 import os
+from datetime import date
 from pyspark import SparkConf
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import split
@@ -24,6 +25,12 @@ bucket_name = os.getenv("GCS_BUCKET_NAME")
 # =========================================================
 RAW_ROOT = f"gs://{bucket_name}/raw/movie_details"
 OUT_ROOT = f"gs://{bucket_name}/silver"
+
+PARSED_ROOT = f"gs://{bucket_name}/silver_parsed/movie_details"
+snapshot_date = os.getenv("SNAPSHOT_DATE", date.today().isoformat())
+
+all_parsed_df = spark.read.parquet(PARSED_ROOT)
+good_df = all_parsed_df.filter(F.col("snapshot_date") == F.to_date(F.lit(snapshot_date)))
 
 # =========================================================
 # 3. Explicit schema
@@ -170,11 +177,6 @@ movie_schema = T.StructType([
 ])
 
 
-PARSED_ROOT = f"gs://{bucket_name}/silver_parsed/movie_details"
-OUT_ROOT = f"gs://{bucket_name}/silver"
-
-good_df = spark.read.parquet(PARSED_ROOT)
-
 # =========================================================
 # 7. Core movie snapshot table
 # =========================================================
@@ -226,10 +228,12 @@ movie_genres = (
 )
 
 dim_genre = (
-    movie_genres
+    all_parsed_df.select(
+        F.explode_outer("genres").alias("genre")
+    )
     .select(
-        "genre_id",
-        "genre_name"
+        F.col("genre.id").alias("genre_id"),
+        F.col("genre.name").alias("genre_name")
     )
     .filter(
         F.col("genre_id").isNotNull() |
@@ -263,12 +267,14 @@ movie_production_companies = (
 )
 
 dim_company = (
-    movie_production_companies
+    all_parsed_df.select(
+        F.explode_outer("production_companies").alias("company")
+    )
     .select(
-        "company_id",
-        "company_name",
-        "company_origin_country",
-        "company_logo_path"
+        F.col("company.id").alias("company_id"),
+        F.col("company.name").alias("company_name"),
+        F.col("company.origin_country").alias("company_origin_country"),
+        F.col("company.logo_path").alias("company_logo_path")
     )
     .filter(
         F.col("company_id").isNotNull() |
@@ -325,11 +331,13 @@ movie_spoken_languages = (
 )
 
 dim_language = (
-    movie_spoken_languages
+    all_parsed_df.select(
+        F.explode_outer("spoken_languages").alias("lang")
+    )
     .select(
-        F.col("language_code"),
-        F.col("language_english_name"),
-        F.col("language_name")
+        F.col("lang.iso_639_1").alias("language_code"),
+        F.col("lang.english_name").alias("language_english_name"),
+        F.col("lang.name").alias("language_name")
     )
     .filter(
         F.col("language_code").isNotNull() |
@@ -354,10 +362,12 @@ movie_origin_countries = (
 )
 
 dim_country = (
-    movie_production_countries
+    all_parsed_df.select(
+        F.explode_outer("production_countries").alias("country")
+    )
     .select(
-        F.col("country_code"),
-        F.col("country_name")
+        F.col("country.iso_3166_1").alias("country_code"),
+        F.col("country.name").alias("country_name")
     )
     .filter(
         F.col("country_code").isNotNull() |
@@ -430,32 +440,63 @@ movie_crew = (
 )
 
 # People come from both cast and crew, so union them first
-person_from_cast = movie_cast.select(
-    "person_id",
-    "person_name",
-    "original_name",
-    "gender",
-    "known_for_department",
-    "profile_path",
-    "person_popularity",
-    "adult"
+person_from_cast = good_df.select(
+    F.explode_outer("credits.cast").alias("cast_member")
+).select(
+    F.col("cast_member.id").alias("person_id"),
+    F.col("cast_member.name").alias("person_name"),
+    F.col("cast_member.original_name").alias("original_name"),
+    F.col("cast_member.gender").alias("gender"),
+    F.col("cast_member.known_for_department").alias("known_for_department"),
+    F.col("cast_member.profile_path").alias("profile_path"),
+    F.col("cast_member.popularity").alias("person_popularity"),
+    F.col("cast_member.adult").alias("adult")
 )
 
-person_from_crew = movie_crew.select(
-    "person_id",
-    "person_name",
-    "original_name",
-    "gender",
-    "known_for_department",
-    "profile_path",
-    "person_popularity",
-    "adult"
+all_person_from_cast = all_parsed_df.select(
+    F.explode_outer("credits.cast").alias("cast_member")
+).select(
+    F.col("cast_member.id").alias("person_id"),
+    F.col("cast_member.name").alias("person_name"),
+    F.col("cast_member.original_name").alias("original_name"),
+    F.col("cast_member.gender").alias("gender"),
+    F.col("cast_member.known_for_department").alias("known_for_department"),
+    F.col("cast_member.profile_path").alias("profile_path"),
+    F.col("cast_member.popularity").alias("person_popularity"),
+    F.col("cast_member.adult").alias("adult")
+)
+
+person_from_crew = good_df.select(
+    F.explode_outer("credits.crew").alias("crew_member")
+).select(
+    F.col("crew_member.id").alias("person_id"),
+    F.col("crew_member.name").alias("person_name"),
+    F.col("crew_member.original_name").alias("original_name"),
+    F.col("crew_member.gender").alias("gender"),
+    F.col("crew_member.known_for_department").alias("known_for_department"),
+    F.col("crew_member.profile_path").alias("profile_path"),
+    F.col("crew_member.popularity").alias("person_popularity"),
+    F.col("crew_member.adult").alias("adult")
+)
+
+all_person_from_crew = all_parsed_df.select(
+    F.explode_outer("credits.crew").alias("crew_member")
+).select(
+    F.col("crew_member.id").alias("person_id"),
+    F.col("crew_member.name").alias("person_name"),
+    F.col("crew_member.original_name").alias("original_name"),
+    F.col("crew_member.gender").alias("gender"),
+    F.col("crew_member.known_for_department").alias("known_for_department"),
+    F.col("crew_member.profile_path").alias("profile_path"),
+    F.col("crew_member.popularity").alias("person_popularity"),
+    F.col("crew_member.adult").alias("adult")
 )
 
 person_union = person_from_cast.unionByName(person_from_crew)
 w = Window.partitionBy("person_id").orderBy(F.col("person_popularity").desc_nulls_last())
 dim_person = (
-    person_union
+    all_person_from_cast
+    .unionByName(all_person_from_crew)
     .filter(F.col("person_id").isNotNull())
     .withColumn("rn", F.row_number().over(w))
     .filter(F.col("rn") == 1)
@@ -485,10 +526,12 @@ movie_keywords = (
 )
 
 dim_keyword = (
-    movie_keywords
+    all_parsed_df.select(
+        F.explode_outer("keywords.keywords").alias("kw")
+    )
     .select(
-        "keyword_id",
-        "keyword_name"
+        F.col("kw.id").alias("keyword_id"),
+        F.col("kw.name").alias("keyword_name")
     )
     .filter(
         F.col("keyword_id").isNotNull() |
@@ -582,85 +625,73 @@ fact_movie_daily_snapshot = (
 # =========================================================
 (
     movies.write
-    .mode("overwrite")
-    .partitionBy("snapshot_date")
+    .mode("append")
     .parquet(f"{OUT_ROOT}/movies")
 )
 
 (
     fact_movie_daily_snapshot.write
-    .mode("overwrite")
-    .partitionBy("snapshot_date")
+    .mode("append")
     .parquet(f"{OUT_ROOT}/fact_movie_daily_snapshot")
 )
 
 (
     movie_genres.write
-    .mode("overwrite")
-    .partitionBy("snapshot_date")
+    .mode("append")
     .parquet(f"{OUT_ROOT}/movie_genres")
 )
 
 (
     movie_production_companies.write
-    .mode("overwrite")
-    .partitionBy("snapshot_date")
+    .mode("append")
     .parquet(f"{OUT_ROOT}/movie_production_companies")
 )
 
 (
     movie_production_countries.write
-    .mode("overwrite")
-    .partitionBy("snapshot_date")
+    .mode("append")
     .parquet(f"{OUT_ROOT}/movie_production_countries")
 )
 
 (
     movie_spoken_languages.write
-    .mode("overwrite")
-    .partitionBy("snapshot_date")
+    .mode("append")
     .parquet(f"{OUT_ROOT}/movie_spoken_languages")
 )
 
 (
     movie_origin_countries.write
-    .mode("overwrite")
-    .partitionBy("snapshot_date")
+    .mode("append")
     .parquet(f"{OUT_ROOT}/movie_origin_countries")
 )
 
 (
     movie_cast.write
-    .mode("overwrite")
-    .partitionBy("snapshot_date")
+    .mode("append")
     .parquet(f"{OUT_ROOT}/movie_cast")
 )
 
 (
     movie_crew.write
-    .mode("overwrite")
-    .partitionBy("snapshot_date")
+    .mode("append")
     .parquet(f"{OUT_ROOT}/movie_crew")
 )
 
 (
     movie_keywords.write
-    .mode("overwrite")
-    .partitionBy("snapshot_date")
+    .mode("append")
     .parquet(f"{OUT_ROOT}/movie_keywords")
 )
 
 (
     movie_release_dates.write
-    .mode("overwrite")
-    .partitionBy("snapshot_date")
+    .mode("append")
     .parquet(f"{OUT_ROOT}/movie_release_dates")
 )
 
 (
     movie_videos.write
-    .mode("overwrite")
-    .partitionBy("snapshot_date")
+    .mode("append")
     .parquet(f"{OUT_ROOT}/movie_videos")
 )
 
